@@ -1,0 +1,2 @@
+# auto clean jupyter output
+*.ipynb filter=strip-notebook-output
