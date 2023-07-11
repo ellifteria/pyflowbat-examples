@@ -3,8 +3,13 @@ import numpy as np
 import time
 
 def main():
+   
+    import pyflowbat as pfb
+
+    
     my_wrkspc = pfb.pyflowbat.Workspace(full_output=False)
 
+    
     my_wrkspc.calculate_beads_factors(
         beads_file_file_path="./ebrc-poster-example-data/Beads_After.fcs",
         beads_fluorescent_channels=[
@@ -14,12 +19,14 @@ def main():
         beads_num_pops=9
     )
 
+    
     my_wrkspc.load_samples(
         sample_collection_name="raw",
         samples_folder_path="./ebrc-poster-example-data/",
         include=['.fcs'],
         not_include=['Beads']
     )
+
     
     my_wrkspc.apply_gate(
         sample_collection_name='raw',
@@ -28,12 +35,16 @@ def main():
         method = 'same',
         samples = ['373_C_001.fcs', '664_D_002.fcs', '373_M_001.fcs']
     )
+
     
     my_wrkspc.apply_gate(
         sample_collection_name='heks',
         new_sample_collection_name='singlets',
-        gating_function=pfb.gating.gate_singlets
+        gating_function=pfb.gating.gate_singlets,
+        gating_channel_names=["FSC-A", "FSC-H"],
+        b=1*10**4
     )
+
     
     my_wrkspc.calculate_compensation_matrix(
         sample_collection_name="singlets",
@@ -41,17 +52,20 @@ def main():
         compensation_channel_names=['PE-Texas Red-A', 'FITC-A'],
         threshold=10**-3
     )
+
     
     my_wrkspc.apply_compensation_matrix(
         sample_collection_name="singlets",
         new_sample_collection_name="compensated"
     )
 
+    
     my_wrkspc.apply_gate(
         sample_collection_name="compensated",
         new_sample_collection_name="transfected",
         gating_function=pfb.gating.gate_high_low,
         gating_channel_name="Alexa 750-A",
+        gating_channel_names=["Alexa 750-A","Alexa 750-A"],
         low=pfb.gating.find_percentile(
             workspace=my_wrkspc,
             sample_collection_name="compensated",
@@ -61,24 +75,6 @@ def main():
         )
     )
 
-    dox_conc = {
-        'A':0,
-        'B':10**0,
-        'C':10**0.17,
-        'D':10**0.33,
-        'E':10**0.50,
-        'F':10**0.63,
-        'G':10**0.75,
-        'H':10**0.88,
-        'I':10**1.0,
-        'J':10**1.08,
-        'K':10**1.25,
-        'L':10**1.33,
-        'M':10**1.50,
-        'N':10**1.75,
-        'O':10**2.0,
-        'P':10**3.0
-    }
     
     extraction = my_wrkspc.create_statistic_extraction(
         sample_collection_name='transfected',
@@ -186,8 +182,10 @@ def main():
         factor_err=my_wrkspc.conversion_factors["PE-Texas Red-A_stderr"]
     )
 
+
+
 if __name__ == "__main__":
-    times = 0
+    times = []
     num_runs = 20
     for i in range(num_runs):
         start_time = time.time()
@@ -195,7 +193,9 @@ if __name__ == "__main__":
         execution_time = time.time() - start_time
         print("run: %d" %i)
         print("--- %s seconds ---" % (execution_time))
-        times += execution_time
+        times.append(execution_time)
 
     print("\nmean execution_time:")
-    print("--- %s seconds ---" % (times/num_runs))
+    print("--- %s seconds ---" % (np.mean(times)))
+    print("\std of execution_times:")
+    print("--- %s seconds ---" % (np.std(times)))
